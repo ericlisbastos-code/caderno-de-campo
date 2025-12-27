@@ -8,11 +8,10 @@ st.title("🥬 Caderno de Campo Digital")
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-SHEET_ID = "COLE_AQUI_O_ID_DA_SUA_PLANILHA"
+SHEET_ID = "1IBA7XcjXzH9YiWVjdIf2D7oZh3SYyGohG4EAuem16FM"
 WORKSHEET = "Página1"  # troque se sua aba tiver outro nome
 
 df = conn.read(spreadsheet=SHEET_ID, worksheet=WORKSHEET)
-
 st.dataframe(df, use_container_width=True)
 
 st.divider()
@@ -25,7 +24,10 @@ with st.form("novo", clear_on_submit=True):
     salvar = st.form_submit_button("Salvar")
 
 if salvar:
-    novo = pd.DataFrame([[data.strftime("%Y-%m-%d"), atividade, observacao]], columns=df.columns)
+    novo = pd.DataFrame(
+        [[data.strftime("%Y-%m-%d"), atividade, observacao]],
+        columns=df.columns
+    )
     df2 = pd.concat([df, novo], ignore_index=True)
     conn.update(spreadsheet=SHEET_ID, worksheet=WORKSHEET, data=df2)
     st.success("Salvo ✅")
