@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-from streamlit_gsheets_connection import GSheetsConnection
+from st_gsheets_connection import GSheetsConnection
 
 # Configuração da página
 st.set_page_config(page_title="Caderno de Campo Digital", layout="wide", page_icon="🌱")
