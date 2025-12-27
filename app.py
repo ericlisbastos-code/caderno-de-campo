@@ -7,48 +7,54 @@ from streamlit_gsheets_connection import GSheetsConnection
 st.set_page_config(page_title="Caderno de Campo Digital", layout="wide", page_icon="🌱")
 
 st.title("🌱 Caderno de Campo Digital")
+st.markdown("---")
 
-# Conexão com o Google Sheets usando as credenciais do Secrets
+# Conexão com Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Função para carregar os dados sempre atualizados
+# Função para ler os dados
 def get_data():
     return conn.read(ttl=0)
 
-df = get_data()
+try:
+    df = get_data()
+except Exception as e:
+    st.error("Erro ao ler a planilha. Verifique se o nome das colunas na Linha 1 da sua planilha está correto.")
+    st.stop()
 
-# Abas para organizar o App
-tab1, tab2 = st.tabs(["📋 Visualizar Registros", "📝 Novo Registro"])
+# Abas do Aplicativo
+tab1, tab2 = st.tabs(["📊 Visualizar Registros", "📝 Novo Registro"])
 
 with tab1:
     st.subheader("Histórico de Atividades")
     if not df.empty:
         st.dataframe(df, use_container_width=True)
     else:
-        st.info("A planilha está vazia ou não foi encontrada.")
+        st.info("Nenhum registro encontrado na planilha.")
 
 with tab2:
-    st.subheader("Registrar Nova Operação")
-    with st.form("form_registro"):
+    st.subheader("Cadastrar Nova Atividade")
+    with st.form("form_registro", clear_on_submit=True):
         col1, col2 = st.columns(2)
         
         with col1:
-            data_obs = st.date_input("Data", date.today())
-            talhao = st.text_input("Talhão", placeholder="Ex: Área Norte 01")
-            cultura = st.text_input("Cultura", placeholder="Ex: Soja, Milho...")
+            data_reg = st.date_input("Data", date.today())
+            talhao = st.text_input("Talhão", placeholder="Ex: Talhão 01")
+            cultura = st.text_input("Cultura", placeholder="Ex: Milho")
             
         with col2:
-            atividade = st.selectbox("Atividade", ["Plantio", "Adubação", "Pulverização", "Colheita", "Outros"])
+            atividade = st.selectbox("Atividade", ["Plantio", "Pulverização", "Adubação", "Colheita", "Outros"])
             responsavel = st.text_input("Responsável")
-            obs = st.text_area("Observações Adicionais")
+            
+        obs = st.text_area("Observações")
         
-        botao_salvar = st.form_submit_button("Salvar na Planilha")
+        submit = st.form_submit_button("Salvar na Planilha")
 
-        if botao_salvar:
+        if submit:
             if talhao and cultura:
-                # Criar nova linha
+                # Cria a nova linha com nomes EXATOS das colunas da planilha
                 nova_linha = pd.DataFrame([{
-                    "Data": data_obs.strftime("%d/%m/%Y"),
+                    "Data": data_reg.strftime("%d/%m/%Y"),
                     "Talhão": talhao,
                     "Cultura": cultura,
                     "Atividade": atividade,
@@ -56,15 +62,10 @@ with tab2:
                     "Observações": obs
                 }])
                 
-                # Adicionar aos dados existentes
+                # Adiciona e faz o update
                 df_atualizado = pd.concat([df, nova_linha], ignore_index=True)
-                
-                # Enviar para o Google Sheets
                 conn.update(data=df_atualizado)
-                
-                st.success("✅ Registro salvo com sucesso!")
+                st.success("Dados salvos com sucesso!")
                 st.rerun()
             else:
-                st.warning("⚠️ Preencha os campos obrigatórios (Talhão e Cultura).")
-
-st.sidebar.info("Conectado à planilha: 'Caderno de Campo'")
+                st.error("Por favor, preencha os campos obrigatórios (Talhão e Cultura).")
