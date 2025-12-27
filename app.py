@@ -1,54 +1,31 @@
 import streamlit as st
 import pandas as pd
-from datetime import date, datetime
-import uuid
-import gspread
-from google.oauth2.service_account import Credentials
+from datetime import datetime
+from streamlit_gsheets import GSheetsConnection
 
-st.set_page_config(page_title="Caderno de Campo", layout="centered")
+st.set_page_config(page_title="Caderno de Campo Digital", layout="wide")
 st.title("🥬 Caderno de Campo Digital")
 
-# ---- AUTH GOOGLE SHEETS ----
-scope = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
-]
+conn = st.connection("gsheets", type=GSheetsConnection)
 
-creds = Credentials.from_service_account_info(
-    st.secrets["gcp_service_account"],
-    scopes=scope
-)
+SHEET_ID = "COLE_AQUI_O_ID_DA_SUA_PLANILHA"
+WORKSHEET = "Página1"  # troque se sua aba tiver outro nome
 
-gc = gspread.authorize(creds)
+df = conn.read(spreadsheet=SHEET_ID, worksheet=WORKSHEET)
 
-# ABRA A PLANILHA PELO NOME EXATO
-sh = gc.open("Caderno de Campo")
-ws = sh.sheet1
+st.dataframe(df, use_container_width=True)
 
-# ---- LEITURA ----
-data = ws.get_all_records()
-df = pd.DataFrame(data)
+st.divider()
+st.subheader("Novo registro")
 
-# ---- FORM ----
-with st.form("registro"):
-    sitio = st.selectbox("Sítio", ["Colégio", "Ressaca"])
-    lote = st.selectbox("Lote", [f"Lote {i}" for i in range(1, 9)])
-    cultura = st.text_input("Cultura")
-    atividade = st.selectbox("Atividade", ["Plantio", "Adubação", "Tratamento", "Colheita"])
-    obs = st.text_area("Observações")
+with st.form("novo", clear_on_submit=True):
+    data = st.date_input("Data", value=datetime.today())
+    atividade = st.text_input("Atividade")
+    observacao = st.text_input("Observação")
     salvar = st.form_submit_button("Salvar")
 
 if salvar:
-    ws.append_row([
-        str(uuid.uuid4())[:8],
-        datetime.now().strftime("%d/%m/%Y %H:%M"),
-        sitio,
-        lote,
-        cultura,
-        atividade,
-        obs
-    ])
-    st.success("Registro salvo")
-
-st.divider()
-st.dataframe(df, use_container_width=True)
+    novo = pd.DataFrame([[data.strftime("%Y-%m-%d"), atividade, observacao]], columns=df.columns)
+    df2 = pd.concat([df, novo], ignore_index=True)
+    conn.update(spreadsheet=SHEET_ID, worksheet=WORKSHEET, data=df2)
+    st.success("Salvo ✅")
